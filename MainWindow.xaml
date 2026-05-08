@@ -229,7 +229,7 @@
                                      FontFamily="Consolas" FontSize="12"
                                      BorderThickness="0" Padding="10,0"
                                      VerticalAlignment="Center" VerticalContentAlignment="Center"
-                                     Text="AudioMod" CaretBrush="#46F0D2"/>
+                                     Text="AudioMod_P" CaretBrush="#46F0D2"/>
                         </Border>
                         <TextBlock Text=".pak" Grid.Column="2" Foreground="#FBE2B4"
                                    FontFamily="Consolas" FontSize="11"

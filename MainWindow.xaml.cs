@@ -226,8 +226,7 @@ namespace NtePakTool
             }
 
             BtnBuild.IsEnabled = false;
-            string modName = string.IsNullOrWhiteSpace(TxtModName.Text) ? "AudioMod" : TxtModName.Text.Trim();
-            modName = modName.TrimEnd('_', 'P', 'p').TrimEnd('_');
+            string modName = string.IsNullOrWhiteSpace(TxtModName.Text) ? "AudioMod_P" : TxtModName.Text.Trim();
 
             string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             string outputFolder = Path.Combine(desktopPath, modName);
@@ -306,8 +305,6 @@ namespace NtePakTool
                 // ── Copy dummy files with mod name ──────────────────────
                 Log("Copying dummy files...");
                 var assembly = Assembly.GetExecutingAssembly();
-                foreach (var r in assembly.GetManifestResourceNames())
-                    Log($"RESOURCE: {r}");
                 foreach (var ext in new[] { "sig", "ucas", "utoc" })
                 {
                     string resourceName = $"NtePakTool.Resources.dummy.{ext}";

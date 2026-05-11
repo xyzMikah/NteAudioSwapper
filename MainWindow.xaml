@@ -1,22 +1,16 @@
 <Window x:Class="NtePakTool.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="NTE Audio Swapper - Made by MK" Height="640" Width="560"
+        Title="NTE Audio Swapper - Made by MK" Height="700" Width="640"
+        MinWidth="340" MinHeight="500"
         WindowStartupLocation="CenterScreen"
         Background="Transparent"
-        AllowDrop="True" Drop="Window_Drop" DragOver="Window_DragOver"
         Closing="Window_Closing"
         WindowStyle="None"
-        ResizeMode="NoResize"
-        AllowsTransparency="True"
-        MouseDown="Window_MouseDown">
+        ResizeMode="CanResizeWithGrip"
+        AllowsTransparency="True">
 
     <Window.Resources>
-        <Style x:Key="Card" TargetType="Border">
-            <Setter Property="Background" Value="#1A1A28"/>
-            <Setter Property="CornerRadius" Value="16"/>
-            <Setter Property="Padding" Value="22,18"/>
-        </Style>
 
         <Style x:Key="BtnPrimary" TargetType="Button">
             <Setter Property="Background" Value="#22C55E"/>
@@ -97,159 +91,330 @@
             </Setter>
         </Style>
 
-        <Style TargetType="ListBoxItem">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Padding" Value="10,5"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ListBoxItem">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Margin="0,1" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#1E1E30"/>
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="#1A2E2A"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
     </Window.Resources>
 
-    <Border Background="#131321" CornerRadius="22" BorderBrush="#22223A" BorderThickness="1">
+    <Border Background="#252538" CornerRadius="22" BorderBrush="#38385E" BorderThickness="1">
+        <Grid>
+        <!-- Resize grip overlaid bottom-right inside the border -->
+        <ResizeGrip HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Margin="0,0,4,4"
+                    Opacity="0.35"
+                    IsTabStop="False"
+                    Panel.ZIndex="99"/>
+
+        <!-- Toast notification — slides in from right, yellow warning -->
+        <Border x:Name="ToastBorder"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="0,12,12,0"
+                Background="#F59E0B"
+                CornerRadius="12"
+                Padding="14,10"
+                MaxWidth="320"
+                Panel.ZIndex="100"
+                Visibility="Collapsed"
+                RenderTransformOrigin="0.5,0.5">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="ToastTranslate" X="400"/>
+            </Border.RenderTransform>
+            <TextBlock x:Name="ToastText"
+                       Foreground="#1A1A00"
+                       FontFamily="Segoe UI"
+                       FontSize="11"
+                       TextWrapping="Wrap"
+                       TextOptions.TextFormattingMode="Display"
+                       TextOptions.TextRenderingMode="ClearType"/>
+        </Border>
         <Grid Margin="18">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="14"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="10"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="10"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="10"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="10"/>
+                <RowDefinition Height="110"/>
             </Grid.RowDefinitions>
 
             <!-- Title Bar -->
-            <Grid Grid.Row="0">
+            <Grid Grid.Row="0" Background="Transparent" MouseLeftButtonDown="TitleBar_MouseDown">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="NTE Audio Swapper - Made by MK" Foreground="#FFFFFF"
-                               FontFamily="Segoe UI Black" FontSize="17"/>
-                    <TextBlock x:Name="TxtWwiseStatus" Text="checking wwise..."
-                               Foreground="#44445A" FontFamily="Segoe UI" FontSize="10" Margin="0,3,0,0"/>
+                    <TextBlock Text="NTE Audio Swapper - Made by MK"
+                               Foreground="#FFFFFF"
+                               FontFamily="Segoe UI Black"
+                               FontSize="17"
+                               TextOptions.TextFormattingMode="Display"
+                               TextOptions.TextRenderingMode="ClearType"/>
+                    <TextBlock x:Name="TxtWwiseStatus"
+                               Text="checking wwise..."
+                               Foreground="#44445A"
+                               FontFamily="Segoe UI"
+                               FontSize="10"
+                               Margin="0,3,0,0"
+                               TextOptions.TextFormattingMode="Display"
+                               TextOptions.TextRenderingMode="ClearType"/>
                 </StackPanel>
                 <Button Grid.Column="1" Content="&#x2715;" Style="{StaticResource BtnClose}"
                         Click="CloseBtn_Click" VerticalAlignment="Top"/>
             </Grid>
 
-            <!-- Step 1: Convert -->
-            <Border Grid.Row="2" Style="{StaticResource Card}">
+            <!-- Song card grid -->
+            <!-- No custom ScrollViewer style = no ugly sidebar -->
+            <ScrollViewer Grid.Row="2"
+                          VerticalScrollBarVisibility="Hidden"
+                          HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl x:Name="SongGrid">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <!-- WrapPanel reflowing cards as window resizes -->
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <!--
+                                Single Border with ClipToBounds="True" + CornerRadius.
+                                NO DropShadowEffect anywhere near this — effect disables
+                                ClearType (blurry text) AND breaks ClipToBounds (corners poke out).
+                            -->
+                            <Border Margin="5"
+                                    CornerRadius="14"
+                                    Background="#2E2E48"
+                                    BorderBrush="{Binding BorderColor}"
+                                    BorderThickness="2"
+                                    Cursor="Hand"
+                                    ClipToBounds="True"
+                                    Width="155"
+                                    AllowDrop="True"
+                                    Tag="{Binding}"
+                                    Drop="Card_Drop"
+                                    DragOver="Card_DragOver"
+                                    DragLeave="Card_DragLeave"
+                                    MouseLeftButtonDown="Card_Click">
+                                <Border.RenderTransform>
+                                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                                </Border.RenderTransform>
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <EventTrigger RoutedEvent="Border.MouseEnter">
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation
+                                                            Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)"
+                                                            To="1.03" Duration="0:0:0.15">
+                                                            <DoubleAnimation.EasingFunction>
+                                                                <CubicEase EasingMode="EaseOut"/>
+                                                            </DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                        <DoubleAnimation
+                                                            Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)"
+                                                            To="1.03" Duration="0:0:0.15">
+                                                            <DoubleAnimation.EasingFunction>
+                                                                <CubicEase EasingMode="EaseOut"/>
+                                                            </DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </EventTrigger>
+                                            <EventTrigger RoutedEvent="Border.MouseLeave">
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation
+                                                            Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)"
+                                                            To="1.0" Duration="0:0:0.15">
+                                                            <DoubleAnimation.EasingFunction>
+                                                                <CubicEase EasingMode="EaseOut"/>
+                                                            </DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                        <DoubleAnimation
+                                                            Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)"
+                                                            To="1.0" Duration="0:0:0.15">
+                                                            <DoubleAnimation.EasingFunction>
+                                                                <CubicEase EasingMode="EaseOut"/>
+                                                            </DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </EventTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+
+                                <StackPanel>
+
+                                    <!--
+                                        This Border clips ONLY the image to top-rounded corners.
+                                        CornerRadius="12,12,0,0" = top-left, top-right, bottom-right, bottom-left.
+                                        ClipToBounds="True" here is what actually cuts the image pixels.
+                                        No effect on this border so ClearType on text below is unaffected.
+                                    -->
+                                    <Border CornerRadius="12,12,0,0"
+                                            ClipToBounds="True"
+                                            Height="130"
+                                            IsHitTestVisible="False">
+                                        <Grid>
+                                            <Image Source="{Binding CoverImage}"
+                                                   Stretch="UniformToFill"
+                                                   IsHitTestVisible="False"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                                            <!-- AddedSong icon top-right -->
+                                            <Image Source="{Binding AddedIcon}"
+                                                   Width="34" Height="34"
+                                                   HorizontalAlignment="Right"
+                                                   VerticalAlignment="Top"
+                                                   Margin="0,5,5,0"
+                                                   Visibility="{Binding AssignedOverlayVisibility}"
+                                                   IsHitTestVisible="False"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                                            <!-- Drag overlay -->
+                                            <Border Background="#BB000000"
+                                                    Visibility="{Binding DragOverVisibility}"
+                                                    IsHitTestVisible="False">
+                                                <TextBlock Text="Drop WAV"
+                                                           Foreground="White"
+                                                           FontFamily="Segoe UI Black"
+                                                           FontSize="13"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           IsHitTestVisible="False"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Text panel — no Effect on any parent so ClearType works perfectly -->
+                                    <StackPanel Margin="8,7,8,8">
+                                        <TextBlock Text="{Binding DisplayName}"
+                                                   Foreground="#60A5FA"
+                                                   FontFamily="Segoe UI Black"
+                                                   FontSize="14"
+                                                   TextWrapping="Wrap"
+                                                   TextOptions.TextFormattingMode="Display"
+                                                   TextOptions.TextRenderingMode="ClearType"/>
+                                        <TextBlock Text="{Binding WemName}"
+                                                   Foreground="#46F0D2"
+                                                   FontFamily="Consolas"
+                                                   FontSize="11"
+                                                   Margin="0,3,0,0"
+                                                   TextWrapping="Wrap"
+                                                   TextOptions.TextFormattingMode="Display"
+                                                   TextOptions.TextRenderingMode="ClearType"/>
+                                        <TextBlock Text="{Binding AssignedFileName}"
+                                                   Foreground="#FBE2B4"
+                                                   FontFamily="Segoe UI"
+                                                   FontSize="11"
+                                                   Margin="0,2,0,0"
+                                                   TextWrapping="Wrap"
+                                                   Visibility="{Binding AssignedOverlayVisibility}"
+                                                   TextOptions.TextFormattingMode="Display"
+                                                   TextOptions.TextRenderingMode="ClearType"/>
+                                    </StackPanel>
+
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- PAK section -->
+            <Border Grid.Row="4" Background="#2E2E48" CornerRadius="16" Padding="18,14">
                 <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="12"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <DockPanel Grid.Row="0">
-                        <StackPanel>
-                            <TextBlock Text="WAV TO WEM" Foreground="#FBE2B4"
-                                       FontFamily="Segoe UI Black" FontSize="10"/>
-                        </StackPanel>
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-                                    HorizontalAlignment="Right" VerticalAlignment="Center">
-                            <Button Content="browse" Style="{StaticResource BtnGhost}"
-                                    Click="Browse_Click" Margin="0,0,8,0"/>
-                            <Button Content="clear" Style="{StaticResource BtnGhost}"
-                                    Click="Clear_Click"/>
-                        </StackPanel>
-                    </DockPanel>
-
-                    <!-- Drop zone + queue combined -->
-                    <Border Grid.Row="2" Background="#0D0D1A" CornerRadius="12" MinHeight="80"
-                            MaxHeight="160" Cursor="Hand" MouseDown="DropZone_Click">
-                        <Grid>
-                            <!-- Placeholder shown when queue is empty -->
-                            <StackPanel x:Name="DropHint" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,16">
-                                <TextBlock Text="drag wav files here or click to browse" Foreground="#2A2A44"
-                                           FontFamily="Segoe UI" FontSize="12" HorizontalAlignment="Center"/>
-                            </StackPanel>
-                            <!-- File list shown when queue has items -->
-                            <ListBox x:Name="FileQueue" SelectionMode="Extended"
-                                     Background="Transparent" BorderThickness="0"
-                                     FontFamily="Consolas" FontSize="11"
-                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                     Padding="4">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding SourceFileName}" Foreground="#FFFFFF"/>
-                                            <TextBlock Text="  →  " Foreground="#FBE2B4"/>
-                                            <TextBlock Text="{Binding TargetWem}" Foreground="#60A5FA" FontWeight="Bold"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="name" Foreground="#FBE2B4" FontFamily="Segoe UI"
+                               FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0"
+                               TextOptions.TextFormattingMode="Display"
+                               TextOptions.TextRenderingMode="ClearType"/>
+                    <Border Grid.Column="1" Background="#18182E" CornerRadius="10" Height="36">
+                        <TextBox x:Name="TxtModName"
+                                 Background="Transparent" Foreground="#FFFFFF"
+                                 FontFamily="Consolas" FontSize="12"
+                                 BorderThickness="0" Padding="10,0"
+                                 VerticalAlignment="Center" VerticalContentAlignment="Center"
+                                 Text="AudioMod_P" CaretBrush="#46F0D2"/>
                     </Border>
-                </Grid>
-            </Border>
+                    <TextBlock Grid.Column="2" Text=".pak" Foreground="#FBE2B4"
+                               FontFamily="Consolas" FontSize="11"
+                               VerticalAlignment="Center" Margin="8,0,0,0"
+                               TextOptions.TextFormattingMode="Display"
+                               TextOptions.TextRenderingMode="ClearType"/>
 
-            <!-- Step 2: Pack -->
-            <Border Grid.Row="4" Style="{StaticResource Card}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="12"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="10"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+                    <!-- clear all -->
+                    <Button Grid.Column="4" Content="clear all" Style="{StaticResource BtnGhost}"
+                            Height="36" Click="ClearAll_Click"/>
 
-                    <TextBlock Grid.Row="0" Text="PAK" Foreground="#FBE2B4"
-                               FontFamily="Segoe UI Black" FontSize="10"/>
-
-                    <Grid Grid.Row="2">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="name" Foreground="#FBE2B4" FontFamily="Segoe UI"
-                                   FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <Border Grid.Column="1" Background="#0D0D1A" CornerRadius="10" Height="36">
-                            <TextBox x:Name="TxtModName"
-                                     Background="Transparent" Foreground="#FFFFFF"
-                                     FontFamily="Consolas" FontSize="12"
-                                     BorderThickness="0" Padding="10,0"
-                                     VerticalAlignment="Center" VerticalContentAlignment="Center"
-                                     Text="AudioMod_P" CaretBrush="#46F0D2"/>
-                        </Border>
-                        <TextBlock Text=".pak" Grid.Column="2" Foreground="#FBE2B4"
-                                   FontFamily="Consolas" FontSize="11"
-                                   VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    <!-- Randomize with popup -->
+                    <Grid Grid.Column="6">
+                        <Button x:Name="BtnRandomize"
+                                Content="randomize"
+                                Style="{StaticResource BtnGhost}"
+                                Height="36"
+                                Click="RandomizeBtn_Click"/>
+                        <Popup x:Name="RandomizePopup"
+                               PlacementTarget="{Binding ElementName=BtnRandomize}"
+                               Placement="Top"
+                               StaysOpen="False"
+                               AllowsTransparency="True">
+                            <Border Background="#2E2E48" CornerRadius="12"
+                                    BorderBrush="#44445A" BorderThickness="1"
+                                    Padding="6">
+                                <StackPanel>
+                                    <Button Content="NTE originals"
+                                            Style="{StaticResource BtnGhost}"
+                                            Margin="0,3" Height="34"
+                                            Click="Rand_NTE_Click"/>
+                                    <Button Content="Persona (P5 + P5X)"
+                                            Style="{StaticResource BtnGhost}"
+                                            Margin="0,3" Height="34"
+                                            Click="Rand_Persona_Click"/>
+                                    <Button Content="Tower of Fantasy"
+                                            Style="{StaticResource BtnGhost}"
+                                            Margin="0,3" Height="34"
+                                            Click="Rand_HT_Click"/>
+                                    <Button Content="All songs"
+                                            Style="{StaticResource BtnGhost}"
+                                            Margin="0,3" Height="34"
+                                            Click="Rand_All_Click"/>
+                                </StackPanel>
+                            </Border>
+                        </Popup>
                     </Grid>
 
-                    <Button Grid.Row="4" Content="BUILD" Style="{StaticResource BtnPrimary}"
-                            Height="42" FontSize="13" Click="BuildMod_Click" x:Name="BtnBuild"/>
+                    <!-- BUILD -->
+                    <Button Grid.Column="8" Content="BUILD" Style="{StaticResource BtnPrimary}"
+                            Height="36" FontSize="13" Click="BuildMod_Click" x:Name="BtnBuild"/>
                 </Grid>
             </Border>
 
             <!-- Log -->
-            <Border Grid.Row="6" Background="#1A1A28" CornerRadius="14" Padding="14,10">
-                <ScrollViewer x:Name="LogScroller" VerticalScrollBarVisibility="Auto">
+            <Border Grid.Row="6" Background="#2E2E48" CornerRadius="14" Padding="14,10">
+                <ScrollViewer x:Name="LogScroller"
+                              VerticalScrollBarVisibility="Hidden"
+                              HorizontalScrollBarVisibility="Disabled">
                     <TextBox x:Name="TxtLog" Background="Transparent" BorderThickness="0"
                              Foreground="#FFFFFF" FontFamily="Consolas" FontSize="9"
                              IsReadOnly="True" TextWrapping="Wrap"/>
                 </ScrollViewer>
             </Border>
 
+        </Grid>
         </Grid>
     </Border>
 </Window>

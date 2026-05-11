@@ -17,6 +17,13 @@
 		<Content Include="OST.ico" />
 	</ItemGroup>
 	<ItemGroup>
+		<EmbeddedResource Include="Resources\id.json" />
+		<EmbeddedResource Include="Resources\AddedSong.png" />
+		<EmbeddedResource Include="Resources\ost.png" />
+		<EmbeddedResource Include="Resources\ht_256.png" />
+		<EmbeddedResource Include="Resources\nte2_256.png" />
+		<EmbeddedResource Include="Resources\p5x_256.png" />
+		<EmbeddedResource Include="Resources\p5_256.png" />
 		<EmbeddedResource Include="Resources\dummy.sig" />
 		<EmbeddedResource Include="Resources\dummy.ucas" />
 		<EmbeddedResource Include="Resources\dummy.utoc" />
@@ -29,8 +36,4 @@
 	  <None Remove="Resources\dummy.ucas" />
 	  <None Remove="Resources\dummy.utoc" />
 	</ItemGroup>
-	<ItemGroup>
-		<PackageReference Include="SkiaSharp" Version="3.119.2" />
-	</ItemGroup>
 </Project>
-

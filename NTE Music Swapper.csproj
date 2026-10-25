@@ -28,8 +28,10 @@
 		<EmbeddedResource Include="Resources\dummy.ucas" />
 		<EmbeddedResource Include="Resources\dummy.utoc" />
 		<EmbeddedResource Include="Resources\UnrealPak.exe" />
-		<EmbeddedResource Include="Resources\WwiseProject\NTE.wproj" />
-		<EmbeddedResource Include="Resources\WwiseProject\Conversion Settings\**\*" />
+		<EmbeddedResource Include="Resources\wav2wem.exe" />
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="NAudio" Version="2.2.1" />
 	</ItemGroup>
 	<ItemGroup>
 	  <None Remove="Resources\dummy.sig" />

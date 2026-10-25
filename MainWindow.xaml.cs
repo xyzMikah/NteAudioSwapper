@@ -918,6 +918,7 @@ namespace NtePakTool
                     int code = await RunProcessAsync(wav2wemPath,
                         $"\"{normWav}\" -o \"{outWem}\" -q {VorbisQuality}");
                     if (code != 0) throw new Exception($"wav2wem failed (exit {code}) for: {c.WemName}");
+                    WemEncoder.PatchWwiseHeader(outWem); // make the header match real Wwise (stereo fix)
                 }
 
                 foreach (var c in assigned)
